@@ -239,7 +239,7 @@ function scannerMiddleware(req, res, next) {
   // 2. Block internal IPs (fast check)
   const internalIPs = ['10.', '192.168.', '172.16.', '172.17.', '172.18.', '172.19.', '172.20.', 
                        '172.21.', '172.22.', '172.23.', '172.24.', '172.25.', '172.26.', '172.27.',
-                       '172.28.', '172.29.', '172.30.', '172.31.', '::1', '::ffff:127.0.0.1'];
+                       '172.28.', '172.29.', '172.30.', '172.31.'];
   
   if (internalIPs.some(ip => clientIp.startsWith(ip))) {
     log('warn', { event: 'internal_scan_blocked', ip: clientIp });
@@ -251,7 +251,7 @@ function scannerMiddleware(req, res, next) {
     log('warn', { event: 'empty_ua_blocked', ip: clientIp });
     return serveDecoy(res);
   }
-  
+
    if (!req.get('Accept') || !req.get('Accept-Language')) {
     log('warn', { event: 'missing_headers', ip: clientIp, ua: ua.slice(0, 200) });
     return serveDecoy(res);
