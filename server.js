@@ -25,6 +25,8 @@ const requestIp = require('request-ip');
 const geoip = require('geoip-lite');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
+app.set('trust proxy', 'loopback');
+
 // Optional Redis store (uncomment to use):
 // const RedisStore = require('rate-limit-redis');
 // const IORedis = require('ioredis');
@@ -195,7 +197,11 @@ function isObviousScanner(req) {
 }
 
 function isSuspiciousGeoLocation(req) {
-  const clientIp = req.clientIp || req.headers['x-forwarded-for'] || '';
+  const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+               req.headers['x-real-ip'] ||
+               req.ip;
+
+
   if (!clientIp || clientIp === '::1' || clientIp === '127.0.0.1') return false; // Skip localhost
   const ip = (clientIp.split(',')[0] || '').trim();
   const geo = geoip.lookup(ip);
@@ -228,7 +234,9 @@ app.use(helmet({ contentSecurityPolicy: false }));
 app.use('/public', express.static('public'));
 
 function scannerMiddleware(req, res, next) {
-  const clientIp = req.clientIp || req.headers['x-forwarded-for'] || '';
+  const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+               req.headers['x-real-ip'] ||
+               req.ip;
   const ua = req.get('User-Agent') || '';
   const currentPath = req.path;
   console.log(`🎯 SCANNER MIDDLEWARE EXECUTING for: ${req.method} ${req.path}`);
@@ -272,7 +280,9 @@ function scannerMiddleware(req, res, next) {
 }
 
 function apiProtectionMiddleware(req, res, next) {
-  const clientIp = req.clientIp;
+  const realIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+               req.headers['x-real-ip'] ||
+               req.ip;
   // ==================== REQUEST TIMING PROTECTION ====================
   if (isTooFast(req)) {
     log('warn', { event: 'request_too_fast', ip: clientIp });
