@@ -24,7 +24,7 @@ const helmet = require('helmet');
 const geoip = require('geoip-lite');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
-app.set('trust proxy', 'loopback');
+app.set('trust proxy', true);
 
 // Optional Redis store (uncomment to use):
 // const RedisStore = require('rate-limit-redis');
@@ -238,10 +238,11 @@ function scannerMiddleware(req, res, next) {
   const ua = req.get('User-Agent') || '';
   const currentPath = req.path;
   console.log(`🎯 SCANNER MIDDLEWARE EXECUTING for: ${req.method} ${req.path}`);
-  log('info', { event: 'request', ip: clientIp, ua: ua.slice(0, 200), path: currentPath });
 
   if (currentPath.match(/\.(css|js|png|jpg|ico|svg)$/i) || currentPath === '/health') return next();
 
+   log('info', { event: 'request', ip: clientIp, ua: ua.slice(0, 200), path: currentPath });
+   
   // 2. Block internal IPs (fast check)
   const internalIPs = ['10.', '192.168.', '172.16.', '172.17.', '172.18.', '172.19.', '172.20.', 
                        '172.21.', '172.22.', '172.23.', '172.24.', '172.25.', '172.26.', '172.27.',
