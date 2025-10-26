@@ -21,7 +21,6 @@ const express = require('express');
 const app = express();
 const path = require('path');
 const helmet = require('helmet');
-const requestIp = require('request-ip');
 const geoip = require('geoip-lite');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
@@ -226,7 +225,6 @@ function sanitizeInput(input) {
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('.'));
 app.use(express.json());
-app.use(requestIp.mw());
 app.use(globalLimiter);
 app.use(helmet({ contentSecurityPolicy: false }));
 
